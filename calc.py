@@ -293,55 +293,52 @@ class CalculatorApp(tk.Tk):
         for widget in self.graph_frame.winfo_children():
             widget.destroy()
 
-        fig, ax = plt.subplots(figsize=(5, 4), dpi=100)
-        canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.fig, self.ax = plt.subplots(figsize=(5, 4), dpi=100)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
         try:
             x = np.linspace(-10, 10, 1000)
             func = self.evaluate_expression(self.result_var.get())
             y = func(x)
-            ax.plot(x, y)
-            ax.axhline(y=0, color='k', linewidth=0.5)
-            ax.axvline(x=0, color='k', linewidth=0.5)
-            ax.set_title(f"y = {self.result_var.get()}")
-            ax.set_xlim(-10, 10)
+            self.ax.plot(x, y)
+            self.ax.axhline(y=0, color='k', linewidth=0.5)
+            self.ax.axvline(x=0, color='k', linewidth=0.5)
+            self.ax.set_title(f"y = {self.result_var.get()}")
+            self.ax.set_xlim(-10, 10)
             y_min, y_max = np.min(y[np.isfinite(y)]), np.max(y[np.isfinite(y)])
             y_range = y_max - y_min
-            ax.set_ylim(y_min - 0.1*y_range, y_max + 0.1*y_range)
+            self.ax.set_ylim(y_min - 0.1*y_range, y_max + 0.1*y_range)
             if self.is_dark_mode:
-                fig.patch.set_facecolor('#2c2c2c')
-                ax.set_facecolor('#2c2c2c')
-                ax.xaxis.label.set_color('#ffffff')
-                ax.yaxis.label.set_color('#ffffff')
-                ax.title.set_color('#ffffff')
-                ax.tick_params(axis='x', colors='#ffffff')
-                ax.tick_params(axis='y', colors='#ffffff')
-                ax.spines['bottom'].set_color('#ffffff')
-                ax.spines['top'].set_color('#ffffff')
-                ax.spines['left'].set_color('#ffffff')
-                ax.spines['right'].set_color('#ffffff')
+                self.fig.patch.set_facecolor('#2c2c2c')
+                self.ax.set_facecolor('#2c2c2c')
+                self.ax.xaxis.label.set_color('#ffffff')
+                self.ax.yaxis.label.set_color('#ffffff')
+                self.ax.title.set_color('#ffffff')
+                self.ax.tick_params(axis='x', colors='#ffffff')
+                self.ax.tick_params(axis='y', colors='#ffffff')
+                self.ax.spines['bottom'].set_color('#ffffff')
+                self.ax.spines['top'].set_color('#ffffff')
+                self.ax.spines['left'].set_color('#ffffff')
+                self.ax.spines['right'].set_color('#ffffff')
         except Exception as e:
-            ax.text(0.5, 0.5, f"Error: {str(e)}", ha='center', va='center', wrap=True)
+            self.ax.text(0.5, 0.5, f"Error: {str(e)}", ha='center', va='center', wrap=True)
 
-        canvas.draw()
+        self.canvas.draw()
 
     def handle_zoom(self, action):
-        fig = self.graph_frame.winfo_children()[0].figure
-        ax = fig.axes[0]
-        
         if action == 'Zoom In':
-            ax.set_xlim(ax.get_xlim()[0] / 2, ax.get_xlim()[1] / 2)
-            ax.set_ylim(ax.get_ylim()[0] / 2, ax.get_ylim()[1] / 2)
+            self.ax.set_xlim(self.ax.get_xlim()[0] / 2, self.ax.get_xlim()[1] / 2)
+            self.ax.set_ylim(self.ax.get_ylim()[0] / 2, self.ax.get_ylim()[1] / 2)
         elif action == 'Zoom Out':
-            ax.set_xlim(ax.get_xlim()[0] * 2, ax.get_xlim()[1] * 2)
-            ax.set_ylim(ax.get_ylim()[0] * 2, ax.get_ylim()[1] * 2)
+            self.ax.set_xlim(self.ax.get_xlim()[0] * 2, self.ax.get_xlim()[1] * 2)
+            self.ax.set_ylim(self.ax.get_ylim()[0] * 2, self.ax.get_ylim()[1] * 2)
         elif action == 'Reset':
-            ax.set_xlim(-10, 10)
-            ax.set_ylim(-10, 10)
+            self.ax.set_xlim(-10, 10)
+            self.ax.set_ylim(-10, 10)
         
-        fig.canvas.draw()
+        self.canvas.draw()
 
     def toggle_color_mode(self):
         self.is_dark_mode = not self.is_dark_mode
