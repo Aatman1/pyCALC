@@ -49,7 +49,11 @@ python calc.py
 ### Acknowledgments
 This project was built using the following resources:
 
+
 Tkinter documentation: https://docs.python.org/3/library/tk.html
+
 Matplotlib documentation: https://matplotlib.org/stable/tutorials
+
 NumPy documentation: https://numpy.org/doc/
+
 SymPy documentation: https://docs.sympy.org/latest/index.html
