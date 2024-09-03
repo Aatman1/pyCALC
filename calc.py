@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk
-from tkinter import font
 import math
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -19,6 +18,7 @@ class CalculatorApp(tk.Tk):
         self.current_mode = "Basic"
         self.is_history_visible = False
         self.history = deque(maxlen=10)
+        self.last_answer = "0"
         
         self.style = ttk.Style(self)
         self.create_themes()
@@ -132,7 +132,7 @@ class CalculatorApp(tk.Tk):
         self.history_listbox.pack(fill=tk.BOTH, expand=True)
         
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
-        
+
     def create_basic_buttons(self, parent):
         buttons = [
             ('C', 0, 0), ('±', 0, 1), ('%', 0, 2), ('÷', 0, 3),
@@ -146,23 +146,24 @@ class CalculatorApp(tk.Tk):
 
     def create_scientific_buttons(self, parent):
         buttons = [
-            ('C', 0, 0), ('(', 0, 1), (')', 0, 2), ('÷', 0, 3), ('sin', 0, 4), ('cos', 0, 5),
-            ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('×', 1, 3), ('tan', 1, 4), ('log', 1, 5),
-            ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('-', 2, 3), ('ln', 2, 4), ('e^x', 2, 5),
-            ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('+', 3, 3), ('x^y', 3, 4), ('√', 3, 5),
-            ('ANS', 4, 0), ('0', 4, 1), ('.', 4, 2), ('=', 4, 3), ('π', 4, 4), ('e', 4, 5),
+            ('C', 0, 0), ('(', 0, 1), (')', 0, 2), ('÷', 0, 3), ('sin', 0, 4), ('cos', 0, 5), ('tan', 0, 6),
+            ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('×', 1, 3), ('asin', 1, 4), ('acos', 1, 5), ('atan', 1, 6),
+            ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('-', 2, 3), ('log', 2, 4), ('ln', 2, 5), ('e^x', 2, 6),
+            ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('+', 3, 3), ('x^y', 3, 4), ('√', 3, 5), ('∛', 3, 6),
+            ('ANS', 4, 0), ('0', 4, 1), ('.', 4, 2), ('=', 4, 3), ('π', 4, 4), ('e', 4, 5), ('|x|', 4, 6),
+            ('sinh', 5, 0), ('cosh', 5, 1), ('tanh', 5, 2), ('deg', 5, 3), ('rad', 5, 4), ('fact', 5, 5), ('mod', 5, 6),
         ]
         
         self.create_button_grid(parent, buttons)
 
     def create_graphing_buttons(self, parent):
         buttons = [
-            ('C', 0, 0), ('(', 0, 1), (')', 0, 2), ('÷', 0, 3), ('sin', 0, 4), ('cos', 0, 5),
-            ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('×', 1, 3), ('tan', 1, 4), ('log', 1, 5),
-            ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('-', 2, 3), ('ln', 2, 4), ('e^x', 2, 5),
-            ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('+', 3, 3), ('x^y', 3, 4), ('√', 3, 5),
-            ('ANS', 4, 0), ('0', 4, 1), ('.', 4, 2), ('x', 4, 3), ('π', 4, 4), ('e', 4, 5),
-            ('Plot', 5, 0, 3), ('Clear', 5, 3, 3),
+            ('C', 0, 0), ('(', 0, 1), (')', 0, 2), ('÷', 0, 3), ('sin', 0, 4), ('cos', 0, 5), ('tan', 0, 6),
+            ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('×', 1, 3), ('asin', 1, 4), ('acos', 1, 5), ('atan', 1, 6),
+            ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('-', 2, 3), ('log', 2, 4), ('ln', 2, 5), ('e^x', 2, 6),
+            ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('+', 3, 3), ('x^y', 3, 4), ('√', 3, 5), ('∛', 3, 6),
+            ('ANS', 4, 0), ('0', 4, 1), ('.', 4, 2), ('x', 4, 3), ('π', 4, 4), ('e', 4, 5), ('|x|', 4, 6),
+            ('Plot', 5, 0, 2), ('Clear', 5, 2, 2), ('Zoom In', 5, 4), ('Zoom Out', 5, 5), ('Reset', 5, 6),
         ]
         
         self.create_button_grid(parent, buttons)
@@ -180,15 +181,15 @@ class CalculatorApp(tk.Tk):
             style = "Calculator.TButton"
             if text in ['÷', '×', '-', '+', '=']:
                 style = "Operation.TButton"
-            elif text in ['sin', 'cos', 'tan', 'log', 'ln', 'e^x', 'x^y', '√', 'π', 'e']:
+            elif text not in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'C', '(', ')']:
                 style = "Function.TButton"
             
             btn = ttk.Button(buttons_frame, text=text, style=style, command=lambda x=text: self.button_click(x))
             btn.grid(row=row, column=col, columnspan=colspan, padx=2, pady=2, sticky="nsew")
         
-        for i in range(5):
-            buttons_frame.grid_rowconfigure(i, weight=1)
         for i in range(6):
+            buttons_frame.grid_rowconfigure(i, weight=1)
+        for i in range(7):
             buttons_frame.grid_columnconfigure(i, weight=1)
 
     def button_click(self, key):
@@ -208,7 +209,7 @@ class CalculatorApp(tk.Tk):
             self.result_var.set("0")
             if self.current_mode == "Graphing":
                 self.update_graph()
-        elif key in ['sin', 'cos', 'tan', 'log', 'ln', 'sqrt']:
+        elif key in ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'log', 'ln', '√', '∛']:
             if current == "0":
                 self.result_var.set(key + '(')
             else:
@@ -225,18 +226,37 @@ class CalculatorApp(tk.Tk):
                 self.result_var.set('exp(')
             else:
                 self.result_var.set(current + 'exp(')
+        elif key == '|x|':
+            if current == "0":
+                self.result_var.set('abs(')
+            else:
+                self.result_var.set(current + 'abs(')
+        elif key == 'fact':
+            if current == "0":
+                self.result_var.set('factorial(')
+            else:
+                self.result_var.set(current + 'factorial(')
+        elif key == 'mod':
+            self.result_var.set(current + '%')
+        elif key in ['Zoom In', 'Zoom Out', 'Reset']:
+            self.handle_zoom(key)
+        elif key == '±':
+            if current.startswith('-'):
+                self.result_var.set(current[1:])
+            else:
+                self.result_var.set('-' + current)
         else:
             if current == "0":
                 self.result_var.set(key)
             else:
                 self.result_var.set(current + key)
-                
+
     def solve_problem(self, event=None):
         try:
             expression = self.result_var.get()
             result = self.evaluate_expression(expression)
             self.result_var.set(result)
-            self.last_answer = str(result)  # Update the last answer
+            self.last_answer = str(result)
             self.history.appendleft(f"{expression} = {result}")
             self.update_history_display()
             if self.current_mode == "Graphing":
@@ -246,20 +266,6 @@ class CalculatorApp(tk.Tk):
             self.history.appendleft(f"{expression} = Error")
             self.update_history_display()
 
-    def update_history_display(self):
-        self.history_listbox.delete(0, tk.END)
-        for item in self.history:
-            self.history_listbox.insert(tk.END, item)
-
-    def toggle_history(self):
-        self.is_history_visible = not self.is_history_visible
-        if self.is_history_visible:
-            self.history_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0), pady=5)
-            self.history_button.config(text="🗒️")  # Note emoji for visible history
-        else:
-            self.history_frame.pack_forget()
-            self.history_button.config(text="📜")  # Scroll emoji for hidden history
-
     def evaluate_expression(self, expression):
         x = sp.Symbol('x')
         # Insert * for implicit multiplication
@@ -267,10 +273,13 @@ class CalculatorApp(tk.Tk):
         expression = re.sub(r'(\d+)(pi|e)', r'\1*\2', expression)
         expression = expression.replace('÷', '/')
         expression = expression.replace('×', '*')
-        expression = expression.replace('^', '^')
+        expression = expression.replace('^', '**')
         expression = expression.replace('√', 'sqrt')
+        expression = expression.replace('∛', 'cbrt')
         expression = expression.replace('ln', 'log')
         expression = expression.replace('π', 'pi')
+        expression = expression.replace('deg', 'degrees')
+        expression = expression.replace('rad', 'radians')
         try:
             expr = sp.sympify(expression, locals={'x': x})
             if self.current_mode == "Graphing":
@@ -279,26 +288,6 @@ class CalculatorApp(tk.Tk):
                 return float(expr.evalf())
         except Exception as e:
             raise ValueError(f"Invalid expression: {str(e)}")
-
-    def toggle_color_mode(self):
-        self.is_dark_mode = not self.is_dark_mode
-        if self.is_dark_mode:
-            self.style.theme_use("calculator_dark_theme")
-            self.dark_mode_button.config(text="🌙")  # Moon emoji for dark mode
-            self.history_listbox.config(bg="#1c1c1c", fg="#ffffff")
-        else:
-            self.style.theme_use("calculator_light_theme")
-            self.dark_mode_button.config(text="☀️")  # Sun emoji for light mode
-            self.history_listbox.config(bg="#ffffff", fg="#000000")
-        
-        if self.current_mode == "Graphing":
-            self.update_graph()
-
-    def on_tab_change(self, event):
-        selected_tab = self.notebook.tab(self.notebook.select(), "text")
-        self.current_mode = selected_tab
-        if self.current_mode == "Graphing":
-            self.update_graph()
 
     def update_graph(self):
         for widget in self.graph_frame.winfo_children():
@@ -318,7 +307,7 @@ class CalculatorApp(tk.Tk):
             ax.axvline(x=0, color='k', linewidth=0.5)
             ax.set_title(f"y = {self.result_var.get()}")
             ax.set_xlim(-10, 10)
-            y_min, y_max = np.min(y), np.max(y)
+            y_min, y_max = np.min(y[np.isfinite(y)]), np.max(y[np.isfinite(y)])
             y_range = y_max - y_min
             ax.set_ylim(y_min - 0.1*y_range, y_max + 0.1*y_range)
             if self.is_dark_mode:
@@ -337,8 +326,56 @@ class CalculatorApp(tk.Tk):
             ax.text(0.5, 0.5, f"Error: {str(e)}", ha='center', va='center', wrap=True)
 
         canvas.draw()
+
+    def handle_zoom(self, action):
+        fig = self.graph_frame.winfo_children()[0].figure
+        ax = fig.axes[0]
         
-    
+        if action == 'Zoom In':
+            ax.set_xlim(ax.get_xlim()[0] / 2, ax.get_xlim()[1] / 2)
+            ax.set_ylim(ax.get_ylim()[0] / 2, ax.get_ylim()[1] / 2)
+        elif action == 'Zoom Out':
+            ax.set_xlim(ax.get_xlim()[0] * 2, ax.get_xlim()[1] * 2)
+            ax.set_ylim(ax.get_ylim()[0] * 2, ax.get_ylim()[1] * 2)
+        elif action == 'Reset':
+            ax.set_xlim(-10, 10)
+            ax.set_ylim(-10, 10)
+        
+        fig.canvas.draw()
+
+    def toggle_color_mode(self):
+        self.is_dark_mode = not self.is_dark_mode
+        if self.is_dark_mode:
+            self.style.theme_use("calculator_dark_theme")
+            self.dark_mode_button.config(text="🌙")  # Moon emoji for dark mode
+            self.history_listbox.config(bg="#1c1c1c", fg="#ffffff")
+        else:
+            self.style.theme_use("calculator_light_theme")
+            self.dark_mode_button.config(text="☀️")  # Sun emoji for light mode
+            self.history_listbox.config(bg="#ffffff", fg="#000000")
+        
+        if self.current_mode == "Graphing":
+            self.update_graph()
+
+    def toggle_history(self):
+        self.is_history_visible = not self.is_history_visible
+        if self.is_history_visible:
+            self.history_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0), pady=5)
+            self.history_button.config(text="🗒️")  # Note emoji for visible history
+        else:
+            self.history_frame.pack_forget()
+            self.history_button.config(text="📜")  # Scroll emoji for hidden history
+
+    def update_history_display(self):
+        self.history_listbox.delete(0, tk.END)
+        for item in self.history:
+            self.history_listbox.insert(tk.END, item)
+
+    def on_tab_change(self, event):
+        selected_tab = self.notebook.tab(self.notebook.select(), "text")
+        self.current_mode = selected_tab
+        if self.current_mode == "Graphing":
+            self.update_graph()
 
     def on_resize(self, event):
         # Adjust font size based on window size
@@ -348,8 +385,6 @@ class CalculatorApp(tk.Tk):
         self.style.configure("Calculator.TButton", font=("Arial", button_font_size, "bold"))
         self.style.configure("Operation.TButton", font=("Arial", button_font_size, "bold"))
         self.style.configure("Function.TButton", font=("Arial", button_font_size, "bold"))
-        
-    # ... (other methods remain the same)
 
 if __name__ == "__main__":
     app = CalculatorApp()
