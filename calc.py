@@ -231,11 +231,11 @@ class CalculatorApp(tk.Tk):
                 self.result_var.set('abs(')
             else:
                 self.result_var.set(current + 'abs(')
-        elif key == 'fact':
+        elif key == '!':
             if current == "0":
-                self.result_var.set('factorial(')
+                self.result_var.set('fact(')
             else:
-                self.result_var.set(current + 'factorial(')
+                self.result_var.set(current + 'fact(')
         elif key == 'mod':
             self.result_var.set(current + '%')
         elif key in ['Zoom In', 'Zoom Out', 'Reset']:
@@ -280,6 +280,7 @@ class CalculatorApp(tk.Tk):
         expression = expression.replace('π', 'pi')
         expression = expression.replace('deg', 'degrees')
         expression = expression.replace('rad', 'radians')
+        expression = expression.replace('fact(', 'factorial(')
         try:
             expr = sp.sympify(expression, locals={'x': x})
             if self.current_mode == "Graphing":
