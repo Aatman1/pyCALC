@@ -2,6 +2,8 @@
 
 The pyCalculator is a feature-rich graphical user interface (GUI) application built using Python and Tkinter. It supports basic, scientific, and graphing calculations, providing users with a comprehensive tool for mathematical operations. The calculator includes a modern UI design with simulated rounded corners for buttons and supports both light and dark themes.
 
+![CALCULATOR](calcpy.png)
+
 ## Features
 
 ### Basic Calculations
