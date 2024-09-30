@@ -1,206 +1,298 @@
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.button import Button
-from kivy.uix.textinput import TextInput
-from kivy.uix.label import Label
-from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
-from kivy.uix.scrollview import ScrollView
-from kivy.graphics import Color, Line, Rectangle
-from kivy.clock import Clock
-from kivy.core.window import Window
+import sys
+from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QPushButton, QTabWidget, QFrame, QVBoxLayout, QHBoxLayout, QScrollArea, QListWidget, QListWidgetItem, QAbstractItemView, QMainWindow
+from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtCore import Qt
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import numpy as np
+import sympy as sp
 import re
-import math
-import cmath
+from collections import deque
 
-class AdvancedCalculator(BoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = 'vertical'
-        self.padding = 10
-        self.spacing = 10
+class CalculatorApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Advanced Calculator")
+        self.setGeometry(100, 100, 1000, 600)
 
-        with self.canvas.before:
-            Color(0.2, 0.2, 0.2, 1)  # Dark background
-            self.rect = Rectangle(size=self.size, pos=self.pos)
-        self.bind(size=self._update_rect, pos=self._update_rect)
+        self.is_dark_mode = False
+        self.current_mode = "Basic"
+        self.is_history_visible = False
+        self.history = deque(maxlen=10)
+        self.last_answer = "0"
 
-        self.result = TextInput(
-            multiline=False, readonly=True, halign="right", font_size=32,
-            background_color=[0.3, 0.3, 0.3, 1], foreground_color=[1, 1, 1, 1],
-            size_hint_y=None, height=60
-        )
-        self.add_widget(self.result)
+        self.create_widgets()
 
-        self.tabbed_panel = TabbedPanel(do_default_tab=False)
-        
-        modes = ['Basic', 'Scientific', 'Graphing']
-        for mode in modes:
-            tab = TabbedPanelItem(text=mode)
-            tab.add_widget(self.create_full_button_layout())
-            self.tabbed_panel.add_widget(tab)
+    def create_widgets(self):
+        self.main_frame = QWidget()
+        self.main_layout = QVBoxLayout()
+        self.main_frame.setLayout(self.main_layout)
+        self.setCentralWidget(self.main_frame)
 
-        self.add_widget(self.tabbed_panel)
+        # Create a frame for the top bar
+        self.top_bar = QFrame()
+        self.top_bar_layout = QHBoxLayout()
+        self.top_bar.setLayout(self.top_bar_layout)
+        self.main_layout.addWidget(self.top_bar)
 
-        # Graphing area
-        self.graph_layout = BoxLayout(orientation='vertical', size_hint_y=None, height=300)
-        self.graph_input = TextInput(multiline=False, size_hint_y=None, height=40)
-        self.graph_input.bind(on_text_validate=self.plot_graph)
-        self.graph_layout.add_widget(self.graph_input)
-        
-        self.graph_canvas = BoxLayout()
-        with self.graph_canvas.canvas:
-            Color(1, 1, 1, 1)
-            self.plot_area = Rectangle(pos=self.graph_canvas.pos, size=self.graph_canvas.size)
-        self.graph_canvas.bind(size=self._update_plot_area, pos=self._update_plot_area)
-        self.graph_layout.add_widget(self.graph_canvas)
-        
-        self.add_widget(self.graph_layout)
+        # Create the dark mode toggle button
+        self.dark_mode_button = QPushButton("☀️")
+        self.dark_mode_button.clicked.connect(self.toggle_color_mode)
+        self.top_bar_layout.addWidget(self.dark_mode_button)
 
-        # History
-        self.history_label = Label(text="History", size_hint_y=None, height=30)
-        self.add_widget(self.history_label)
+        # Create the history toggle button
+        self.history_button = QPushButton("📜")
+        self.history_button.clicked.connect(self.toggle_history)
+        self.top_bar_layout.addWidget(self.history_button)
 
-        self.history = ScrollView(size_hint_y=None, height=100)
-        self.history_layout = BoxLayout(orientation='vertical', size_hint_y=None)
-        self.history_layout.bind(minimum_height=self.history_layout.setter('height'))
-        self.history.add_widget(self.history_layout)
-        self.add_widget(self.history)
+        # Create a frame for the calculator and history
+        self.content_frame = QFrame()
+        self.content_layout = QHBoxLayout()
+        self.content_frame.setLayout(self.content_layout)
+        self.main_layout.addWidget(self.content_frame)
 
-    def _update_rect(self, instance, value):
-        self.rect.pos = instance.pos
-        self.rect.size = instance.size
+        # Create a frame for the calculator
+        self.calculator_frame = QFrame()
+        self.calculator_layout = QVBoxLayout()
+        self.calculator_frame.setLayout(self.calculator_layout)
+        self.content_layout.addWidget(self.calculator_frame)
 
-    def _update_plot_area(self, instance, value):
-        self.plot_area.pos = instance.pos
-        self.plot_area.size = instance.size
+        self.result_var = ""
+        self.result_display = QListWidget()
+        self.result_display.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.calculator_layout.addWidget(self.result_display)
 
-    def create_full_button_layout(self):
-        layout = GridLayout(cols=5, spacing=5)
+        self.notebook = QTabWidget()
+        self.calculator_layout.addWidget(self.notebook)
+
+        self.basic_frame = QFrame()
+        self.scientific_frame = QFrame()
+        self.graphing_frame = QFrame()
+
+        self.notebook.addTab(self.basic_frame, "Basic")
+        self.notebook.addTab(self.scientific_frame, "Scientific")
+        self.notebook.addTab(self.graphing_frame, "Graphing")
+
+        self.create_basic_buttons(self.basic_frame)
+        self.create_scientific_buttons(self.scientific_frame)
+        self.create_graphing_buttons(self.graphing_frame)
+
+        self.graph_frame = QFrame()
+        self.graph_frame_layout = QVBoxLayout()
+        self.graph_frame.setLayout(self.graph_frame_layout)
+        self.graphing_frame.setLayout(self.graph_frame_layout)
+
+        # Create history display
+        self.history_frame = QFrame()
+        self.history_frame_layout = QVBoxLayout()
+        self.history_frame.setLayout(self.history_frame_layout)
+        self.content_layout.addWidget(self.history_frame)
+
+        self.history_title = QListWidget()
+        self.history_title.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.history_title.addItem("History")
+        self.history_frame_layout.addWidget(self.history_title)
+
+        self.history_listbox = QListWidget()
+        self.history_listbox.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.history_frame_layout.addWidget(self.history_listbox)
+
+        self.notebook.currentChanged.connect(self.on_tab_change)
+
+    def create_basic_buttons(self, parent):
         buttons = [
-            'sin', 'cos', 'tan', 'log', 'ln',
-            'asin', 'acos', 'atan', '10^x', 'e^x',
-            '(', ')', 'π', 'e', '^',
-            '7', '8', '9', '÷', 'AC',
-            '4', '5', '6', '×', '⌫',
-            '1', '2', '3', '-', 'Ans',
-            '0', '.', '±', '+', '=',
-            'x', 'y', 'z', 'i', 'Plot'
+            ('C', 0, 0), ('±', 0, 1), ('%', 0, 2), ('÷', 0, 3),
+            ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('×', 1, 3),
+            ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('-', 2, 3),
+            ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('+', 3, 3),
+            ('0', 4, 0, 2), ('.', 4, 2), ('=', 4, 3),
         ]
-        for button_text in buttons:
-            button = Button(
-                text=button_text,
-                background_normal='',
-                background_color=[0.4, 0.4, 0.4, 1] if button_text.isdigit() or button_text in ['.', '±']
-                else [0.3, 0.5, 0.7, 1] if button_text in ['sin', 'cos', 'tan', 'log', 'ln', 'asin', 'acos', 'atan', '10^x', 'e^x']
-                else [0.7, 0.3, 0.3, 1] if button_text in ['AC', '⌫']
-                else [0.3, 0.7, 0.3, 1] if button_text == '='
-                else [0.5, 0.5, 0.5, 1],
-                color=[1, 1, 1, 1]
-            )
-            button.bind(on_press=self.on_button_press)
-            layout.add_widget(button)
-        return layout
 
-    def on_button_press(self, instance):
-        current = self.result.text
-        button_text = instance.text
+        self.create_button_grid(parent, buttons)
 
-        if button_text == 'AC':
-            self.result.text = ''
-        elif button_text == '⌫':
-            self.result.text = self.result.text[:-1]
-        elif button_text == '=':
-            try:
-                result = str(self.evaluate_expression(current))
-                self.result.text = result
-                self.add_to_history(f"{current} = {result}")
-            except Exception as e:
-                self.result.text = f'Error: {str(e)}'
-                self.add_to_history(f"{current} = Error: {str(e)}")
-        elif button_text == 'Plot':
-            self.graph_input.text = current
-        elif button_text == '±':
-            if current and current[0] == '-':
-                self.result.text = current[1:]
+    def create_scientific_buttons(self, parent):
+        buttons = [
+            ('C', 0, 0), ('(', 0, 1), (')', 0, 2), ('÷', 0, 3), ('sin', 0, 4), ('cos', 0, 5), ('tan', 0, 6),
+            ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('×', 1, 3), ('asin', 1, 4), ('acos', 1, 5), ('atan', 1, 6),
+            ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('-', 2, 3), ('log', 2, 4), ('ln', 2, 5), ('e^x', 2, 6),
+            ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('+', 3, 3), ('x^y', 3, 4), ('√', 3, 5), ('∛', 3, 6),
+            ('ANS', 4, 0), ('0', 4, 1), ('.', 4, 2), ('=', 4, 3), ('π', 4, 4), ('e', 4, 5), ('|x|', 4, 6),
+            ('sinh', 5, 0), ('cosh', 5, 1), ('tanh', 5, 2), ('deg', 5, 3), ('rad', 5, 4), ('!', 5, 5), ('%', 5, 6),
+        ]
+
+        self.create_button_grid(parent, buttons)
+
+    def create_graphing_buttons(self, parent):
+        buttons = [
+            ('C', 0, 0), ('±', 0, 1), ('%', 0, 2), ('÷', 0, 3),
+            ('7', 1, 0), ('8', 1, 1), ('9', 1, 2), ('×', 1, 3),
+            ('4', 2, 0), ('5', 2, 1), ('6', 2, 2), ('-', 2, 3),
+            ('1', 3, 0), ('2', 3, 1), ('3', 3, 2), ('+', 3, 3),
+            ('0', 4, 0, 2), ('.', 4, 2), ('=', 4, 3),
+            ('x', 5, 0), ('y', 5, 1), ('z', 5, 2), ('graph', 5, 3),
+        ]
+
+        self.create_button_grid(parent, buttons)
+
+    def create_button_grid(self, parent, buttons):
+        grid = QGridLayout()
+        parent.setLayout(grid)
+
+        for button in buttons:
+            if len(button) == 4:
+                btn = QPushButton(button[0])
+                btn.clicked.connect(self.on_button_click)
+                grid.addWidget(btn, button[1], button[2], 1, button[3])
             else:
-                self.result.text = '-' + current
-        elif button_text in ['sin', 'cos', 'tan', 'log', 'ln', 'asin', 'acos', 'atan']:
-            self.result.text += f"{button_text}("
-        elif button_text == '10^x':
-            self.result.text += '10**('
-        elif button_text == 'e^x':
-            self.result.text += 'e**('
-        elif button_text == 'π':
-            self.result.text += 'pi'
-        elif button_text == 'Ans':
-            if self.history_layout.children:
-                last_result = self.history_layout.children[0].text.split('=')[-1].strip()
-                self.result.text += last_result
+                btn = QPushButton(button[0])
+                btn.clicked.connect(self.on_button_click)
+                grid.addWidget(btn, button[1], button[2])
+
+    def on_button_click(self):
+        button = self.sender()
+        text = button.text()
+
+        if text == '=':
+            self.calculate_result()
+        elif text == 'C':
+            self.clear_result()
+        elif text == '±':
+            self.change_sign()
+        elif text == '%':
+            self.calculate_percentage()
+        elif text == 'graph':
+            self.graph_function()
+        elif text == 'sin':
+            self.append_to_result('math.sin(')
+        elif text == 'cos':
+            self.append_to_result('math.cos(')
+        elif text == 'tan':
+            self.append_to_result('math.tan(')
+        elif text == 'asin':
+            self.append_to_result('math.asin(')
+        elif text == 'acos':
+            self.append_to_result('math.acos(')
+        elif text == 'atan':
+            self.append_to_result('math.atan(')
+        elif text == 'log':
+            self.append_to_result('math.log(')
+        elif text == 'ln':
+            self.append_to_result('math.log(')
+        elif text == 'e^x':
+            self.append_to_result('math.exp(')
+        elif text == 'x^y':
+            self.append_to_result('**')
+        elif text == '√':
+            self.append_to_result('math.sqrt(')
+        elif text == '∛':
+            self.append_to_result('round(' + self.result_var + '**(1./3))')
+        elif text == 'π':
+            self.append_to_result('math.pi')
+        elif text == 'e':
+            self.append_to_result('math.e')
+        elif text == '|x|':
+            self.append_to_result('abs(')
+        elif text == 'sinh':
+            self.append_to_result('math.sinh(')
+        elif text == 'cosh':
+            self.append_to_result('math.cosh(')
+        elif text == 'tanh':
+            self.append_to_result('math.tanh(')
+        elif text == '!':
+            self.append_to_result('math.factorial(')
+        elif text == '%':
+            self.append_to_result('/100')
         else:
-            self.result.text += button_text
+            self.append_to_result(text)
 
-    def evaluate_expression(self, expr):
-        # Replace '^' with '**' for exponentiation
-        expr = expr.replace('^', '**')
-        
-        # Replace multiplication and division characters
-        expr = expr.replace('×', '*')
-        expr = expr.replace('÷', '/')
-        
-        # Replace constants
-        expr = expr.replace('π', 'math.pi')
-        expr = expr.replace('e', 'math.e')
-        
-        # Replace trigonometric functions
-        for func in ['sin', 'cos', 'tan', 'asin', 'acos', 'atan']:
-            expr = expr.replace(f'{func}(', f'math.{func}(')
-        
-        # Replace logarithmic functions
-        expr = expr.replace('log(', 'math.log10(')
-        expr = expr.replace('ln(', 'math.log(')
-        
-        # Evaluate the expression
-        return eval(expr, {"__builtins__": None}, {"math": math, "cmath": cmath})
+    def on_tab_change(self):
+        self.current_mode = self.notebook.tabText(self.notebook.currentIndex())
 
-    def add_to_history(self, entry):
-        self.history_layout.add_widget(Label(text=entry, size_hint_y=None, height=30))
-        self.history.scroll_to(self.history_layout.children[0])
+    def toggle_color_mode(self):
+        self.is_dark_mode = not self.is_dark_mode
+        if self.is_dark_mode:
+            self.setStyleSheet("background-color: #2b2b2b; color: #ffffff")
+            self.dark_mode_button.setText("🌙")
+        else:
+            self.setStyleSheet("")
+            self.dark_mode_button.setText("☀️")
 
-    def plot_graph(self, instance):
-        expression = instance.text
+    def toggle_history(self):
+        self.is_history_visible = not self.is_history_visible
+        if self.is_history_visible:
+            self.history_frame.show()
+        else:
+            self.history_frame.hide()
+
+    def append_to_result(self, text):
+        self.result_var += text
+        self.result_display.clear()
+        self.result_display.addItem(self.result_var)
+
+    def clear_result(self):
+        self.result_var = ""
+        self.result_display.clear()
+
+    def change_sign(self):
+        if self.result_var:
+            if self.result_var[0] == '-':
+                self.result_var = self.result_var[1:]
+            else:
+                self.result_var = '-' + self.result_var
+            self.result_display.clear()
+            self.result_display.addItem(self.result_var)
+
+    def calculate_percentage(self):
+        if self.result_var:
+            self.result_var = str(float(self.result_var) / 100)
+            self.result_display.clear()
+            self.result_display.addItem(self.result_var)
+
+    def calculate_result(self):
         try:
-            x_values = [x * 0.1 for x in range(-50, 51)]
-            y_values = [self.evaluate_expression(expression.replace('x', str(x))) for x in x_values]
-
-            # Clear previous plot
-            self.graph_canvas.canvas.clear()
-
-            with self.graph_canvas.canvas:
-                # Draw axes
-                Color(0.7, 0.7, 0.7, 1)  # Light gray
-                Line(points=[0, self.graph_canvas.height / 2, self.graph_canvas.width, self.graph_canvas.height / 2])
-                Line(points=[self.graph_canvas.width / 2, 0, self.graph_canvas.width / 2, self.graph_canvas.height])
-
-                # Plot the function
-                Color(1, 0, 0, 1)  # Red
-                points = []
-                for x, y in zip(x_values, y_values):
-                    px = self.graph_canvas.width / 2 + x * 20  # Scale x
-                    py = self.graph_canvas.height / 2 + y * 20  # Scale y
-                    points.extend([px, py])
-                Line(points=points, width=2)
+            # Replace ^ with **, × with *, and ÷ with / before evaluating the expression
+            expression = self.result_var.replace('^', '**').replace('×', '*').replace('÷', '/')
+            # Replace cos, sin, and tan with their corresponding Python functions
+            expression = expression.replace('cos(', 'math.cos(math.radians(').replace('sin(', 'math.sin(math.radians(').replace('tan(', 'math.tan(math.radians(')
+            result = eval(expression)
+            full_calculation = self.result_var + ' = ' + str(result)
+            self.history.append(full_calculation)
+            self.history_listbox.clear()
+            for item in self.history:
+                self.history_listbox.addItem(item)
+            self.last_answer = str(result)
+            self.result_var = str(result)
+            self.result_display.clear()
+            self.result_display.addItem(self.result_var)
         except Exception as e:
-            print(f"Error plotting graph: {e}")
-            with self.graph_canvas.canvas:
-                Color(1, 1, 1, 1)
-                Rectangle(pos=self.graph_canvas.pos, size=self.graph_canvas.size)
-                Color(1, 0, 0, 1)
-                Label(text=f"Error: {str(e)}", pos=self.graph_canvas.center)
+            self.result_var = "Error"
+            self.result_display.clear()
+            self.result_display.addItem(self.result_var)
 
-class AdvancedCalculatorApp(App):
-    def build(self):
-        return AdvancedCalculator()
+    def graph_function(self):
+        try:
+            x = sp.symbols('x')
+            func = sp.sympify(self.result_var)
+            x_vals = np.linspace(-10, 10, 400)
+            y_vals = sp.lambdify(x, func, 'numpy')(x_vals)
 
-if __name__ == '__main__':
-    AdvancedCalculatorApp().run()
+            fig = Figure()
+            ax = fig.add_subplot(111)
+            ax.plot(x_vals, y_vals)
+            ax.set_title('Graph of ' + self.result_var)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+
+            canvas = FigureCanvas(fig)
+            self.graph_frame_layout.addWidget(canvas)
+        except Exception as e:
+            self.result_var = "Error"
+            self.result_display.clear()
+            self.result_display.addItem(self.result_var)
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = CalculatorApp()
+    window.show()
+    sys.exit(app.exec())
