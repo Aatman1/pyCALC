@@ -28,15 +28,18 @@ The pyCalculator is a feature-rich graphical user interface (GUI) application bu
     - Reset graph view (being fixed)
     - Modern UI Design
     - Light and dark themes with easy toggle
-    - Responsive layout that adapts to window resizing
-    - History display for the last 10 calculations
-    - Prerequisites
+
+Responsive layout that adapts to window resizing
+History display for the last 10 calculations
+
+### Prerequisites
     - Python 3.x
     - Required Python libraries:
     - tkinter (comes with Python standard library)
     - matplotlib
     - numpy
     - sympy
+
 
 ### Installation
 To install the required libraries, run the following commands:
